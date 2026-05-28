@@ -17,19 +17,29 @@ from pathlib import Path
 
 from cisco_console_capture import __version__
 
+# -- ANSI colors --------------------------------------------------------------
+_R  = "\033[0m"    # reset
+_B  = "\033[1m"    # bold
+_DM = "\033[2m"    # dim
+_RE = "\033[31m"   # red
+_GR = "\033[32m"   # green
+_YL = "\033[33m"   # yellow
+_CY = "\033[36m"   # cyan
+_MG = "\033[35m"   # magenta
+
 # -- Guard: Linux only --------------------------------------------------------
 if sys.platform != "linux":
-    sys.exit("ERROR: This script only runs on Linux.")
+    sys.exit(f"{_RE}ERROR: This script only runs on Linux.{_R}")
 
 try:
     import serial
 except ImportError:
-    sys.exit("ERROR: pyserial is not installed.  Run: pip install pyserial")
+    sys.exit(f"{_RE}ERROR: pyserial is not installed.  Run: pip install pyserial{_R}")
 
 try:
     import pyudev
 except ImportError:
-    sys.exit("ERROR: pyudev is not installed.  Run: pip install pyudev")
+    sys.exit(f"{_RE}ERROR: pyudev is not installed.  Run: pip install pyudev{_R}")
 
 
 # -- Constants ----------------------------------------------------------------
@@ -43,16 +53,6 @@ READ_TIMEOUT    = 15      # seconds to wait for a prompt / output
 INTER_CMD_DELAY = 0.5     # seconds between writes
 MORE_PATTERN    = re.compile(r"--More--|--- more ---", re.IGNORECASE)
 PROMPT_PATTERN  = re.compile(r"[>#]\s*$")
-
-# -- ANSI colors (stdout only) ------------------------------------------------
-_R  = "\033[0m"    # reset
-_B  = "\033[1m"    # bold
-_DM = "\033[2m"    # dim
-_RE = "\033[31m"   # red
-_GR = "\033[32m"   # green
-_YL = "\033[33m"   # yellow
-_CY = "\033[36m"   # cyan
-_MG = "\033[35m"   # magenta
 
 
 # -- udev helpers -------------------------------------------------------------
@@ -98,9 +98,9 @@ def select_port(ports: list[dict]) -> str:
     """Auto-select a Cisco device if unambiguous, otherwise prompt the user."""
     if not ports:
         sys.exit(
-            "No serial TTY devices found via udev.\n"
-            "Check that your USB-serial adapter is connected and "
-            "your user is in the 'dialout' group."
+            f"{_RE}No serial TTY devices found via udev.\n"
+            f"Check that your USB-serial adapter is connected and "
+            f"your user is in the 'dialout' group.{_R}"
         )
 
     cisco_ports = [p for p in ports if p["is_cisco"]]
@@ -340,25 +340,25 @@ def main() -> None:
     if args.command_file:
         cmd_file = Path(args.command_file)
         if not cmd_file.is_file():
-            sys.exit(f"ERROR: Command file {str(cmd_file)!r} does not exist.")
+            sys.exit(f"{_RE}ERROR: Command file {str(cmd_file)!r} does not exist.{_R}")
         file_commands = [
             line.strip()
             for line in cmd_file.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.strip().startswith("#")
         ]
         if not file_commands:
-            sys.exit(f"ERROR: Command file {str(cmd_file)!r} contains no commands.")
+            sys.exit(f"{_RE}ERROR: Command file {str(cmd_file)!r} contains no commands.{_R}")
     commands = file_commands + (args.commands or []) or COMMANDS
 
     try:
         if output_dir is not None and not output_dir.is_dir():
-            sys.exit(f"ERROR: Output directory {str(output_dir)!r} does not exist.")
+            sys.exit(f"{_RE}ERROR: Output directory {str(output_dir)!r} does not exist.{_R}")
 
         # Resolve port
         if args.port:
             port = args.port
             if not Path(port).exists():
-                sys.exit(f"ERROR: Device {port!r} does not exist.")
+                sys.exit(f"{_RE}ERROR: Device {port!r} does not exist.{_R}")
             print(f"{_CY}Using specified port:{_R} {port}")
         else:
             print(f"{_CY}Scanning for serial TTY devices via udev \u2026{_R}")
