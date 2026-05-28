@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cisco-console-capture"
+version = "1.0.0"
+description = "Capture Cisco CLI output over a serial console using pyserial and udev"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "pyserial>=3.5",
+    "pyudev>=0.24",
+]
+
+[project.scripts]
+console-capture = "cisco_console_capture.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cisco_console_capture"]

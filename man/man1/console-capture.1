@@ -1,0 +1,121 @@
+.TH CONSOLE-CAPTURE 1 "2026" "1.0.0" "Network Utilities"
+.SH NAME
+console-capture \- capture Cisco CLI output over a serial console
+.SH SYNOPSIS
+.B console-capture
+[\fB\-p\fR \fIPORT\fR]
+[\fB\-b\fR \fIBAUD\fR]
+[\fB\-u\fR \fIUSERNAME\fR]
+[\fB\-P\fR \fIPASSWORD\fR]
+[\fB\-o\fR \fIOUTPUT\fR]
+[\fB\-c\fR \fICMD\fR]...
+.SH DESCRIPTION
+.B console-capture
+connects to a Cisco network device via a serial console cable, sends CLI
+commands, and writes the captured output to a timestamped text file named
+after the device hostname.
+.PP
+By default the commands
+.B show run brief
+and
+.B show interfaces status
+are sent.  Use
+.B \-c
+to replace them with your own commands.
+.PP
+Serial ports are auto-detected using
+.BR udev (7)
+if \fB\-\-port\fR is not specified.  The tool handles username/password login
+prompts and automatically disables terminal pagination (\fIterminal length 0\fR).
+.SH OPTIONS
+.TP
+.BR \-p ", " \-\-port " " \fIPATH\fR
+Serial device path (e.g.\& \fI/dev/ttyUSB0\fR).
+If omitted, available TTY devices are discovered via udev and the user is
+prompted to choose one.
+.TP
+.BR \-b ", " \-\-baud " " \fIRATE\fR
+Baud rate for the serial connection (default: \fB9600\fR).
+.TP
+.BR \-u ", " \-\-username " " \fIUSER\fR
+Login username.  Prompted interactively if the device requires credentials
+and this option is not supplied.
+.TP
+.BR \-P ", " \-\-password " " \fIPASS\fR
+Login password.  Prompted securely via \fBgetpass\fR if required and not
+supplied on the command line.
+.TP
+.BR \-o ", " \-\-output " " \fIFILE\fR
+Path for the output text file.
+Default: \fI<hostname>_YYYYMMDD_HHMMSS.txt\fR in the current directory,
+where \fI<hostname>\fR is read from the device prompt after login.
+.TP
+.BR \-c ", " \-\-command " " \fICMD\fR
+CLI command to send to the device.  May be repeated to run multiple commands.
+Replaces the default command list when supplied.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-h ", " \-\-help
+Print a short usage summary and exit.
+.SH EXAMPLES
+.PP
+Auto-detect port, interactive login, auto-named output file:
+.PP
+.RS 4
+.EX
+console-capture
+.EE
+.RE
+.PP
+Specify port and username:
+.PP
+.RS 4
+.EX
+console-capture -p /dev/ttyUSB0 -u admin
+.EE
+.RE
+.PP
+Run custom commands instead of the defaults:
+.PP
+.RS 4
+.EX
+console-capture -c "show version" -c "show ip route"
+.EE
+.RE
+.PP
+Save to a specific file:
+.PP
+.RS 4
+.EX
+console-capture -p /dev/ttyUSB0 -o capture.txt
+.EE
+.RE
+.SH FILES
+.TP
+.I ~/.local/share/cisco-console-capture/
+Python virtual environment containing the tool and its dependencies.
+.TP
+.I /usr/local/bin/console-capture
+Wrapper shell script that invokes the tool from the virtual environment.
+.SH NOTES
+The user running this command must be a member of the
+.B dialout
+group to access serial devices without root privileges:
+.PP
+.RS 4
+.EX
+sudo usermod -aG dialout $USER
+.EE
+.RE
+.PP
+Log out and back in after adding yourself to the group.
+.SH REQUIREMENTS
+Linux only (udev is required).  Python 3.10 or newer.
+.SH SEE ALSO
+.BR screen (1),
+.BR minicom (1),
+.BR udev (7)
+.SH AUTHOR
+Cisco Console Capture 1.0.0
