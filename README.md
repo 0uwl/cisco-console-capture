@@ -47,8 +47,11 @@ console-capture [OPTIONS]
 | `--baud RATE` | `-b` | Baud rate (default: 9600) |
 | `--username USER` | `-u` | Login username (prompted if needed) |
 | `--password PASS` | `-P` | Login password (prompted securely if needed) |
-| `--output FILE` | `-o` | Output file (default: `cisco_output_<timestamp>.txt`) |
-| `--command CMD` | `-c` | Command to run (repeatable). Replaces the default command list when supplied. |
+| `--enable-password PASS` | `-e` | Enable mode password (prompted securely if the device asks) |
+| `--output FILE` | `-o` | Output file (default: `<hostname>_<timestamp>.txt`) |
+| `--output-dir DIR` | `-d` | Directory for the auto-named output file (ignored if `--output` is given) |
+| `--command CMD` | `-c` | Command to run (repeatable). Combined with `--command-file`; both replace the defaults. |
+| `--command-file FILE` | `-f` | File with one CLI command per line. Blank lines and `#` comments are ignored. |
 | `--version` | `-v` | Show version and exit |
 
 ### Examples
@@ -62,6 +65,12 @@ console-capture -p /dev/ttyUSB0 -b 9600 -u admin -o capture.txt
 
 # Run custom commands instead of the defaults
 console-capture -c "show version" -c "show ip route" -c "show ip interface brief"
+
+# Read commands from a file
+console-capture -f commands.txt
+
+# Save to a specific directory without changing the filename
+console-capture -d /tmp/captures
 ```
 
 ## Uninstallation
@@ -74,8 +83,7 @@ console-capture -c "show version" -c "show ip route" -c "show ip interface brief
 
 1. **udev discovery** – scans the `tty` subsystem via pyudev for real serial
    adapters (`ttyUSB*`, `ttyACM*`, `ttyS[0-9]*`, `ttyAMA*`, `ttyXR*`).
-2. **Login handling** – sends Enter, then responds to username/password prompts
-   and sends `terminal length 0` to disable pagination.
+2. **Login handling** – sends Enter, responds to username/password prompts, issues `enable` to enter privileged EXEC mode (handling the enable password prompt if the device asks), then sends `terminal length 0` to disable pagination.
 3. **Command execution** – sends each command, reads until a Cisco prompt
    (`#` or `>`) or timeout, and handles any remaining `--More--` pages.
 4. **Output** – writes all results to a clearly formatted text file.

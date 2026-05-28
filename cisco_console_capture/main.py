@@ -59,7 +59,7 @@ def discover_serial_ports() -> list[dict]:
             continue
 
         name = Path(dev_node).name
-        if not re.match(r"tty(USB|ACM|AMA|XR|S[0-9])\d*", name):
+        if not re.match(r"tty(USB|ACM)\d*", name):
             continue
 
         parts = []
@@ -71,20 +71,31 @@ def discover_serial_ports() -> list[dict]:
         if not Path(dev_node).exists():
             continue
 
+        vendor = device.get("ID_VENDOR", "")
         description = " \u2013 ".join(parts) if parts else "Serial device"
-        ports.append({"device": dev_node, "description": description})
+        ports.append({
+            "device": dev_node,
+            "description": description,
+            "is_cisco": "cisco" in vendor.lower(),
+        })
 
     return sorted(ports, key=lambda p: p["device"])
 
 
 def select_port(ports: list[dict]) -> str:
-    """Prompt the user to choose from the discovered ports."""
+    """Auto-select a Cisco device if unambiguous, otherwise prompt the user."""
     if not ports:
         sys.exit(
             "No serial TTY devices found via udev.\n"
             "Check that your USB-serial adapter is connected and "
             "your user is in the 'dialout' group."
         )
+
+    cisco_ports = [p for p in ports if p["is_cisco"]]
+    if len(cisco_ports) == 1:
+        p = cisco_ports[0]
+        print(f"Auto-selected Cisco device: {p['device']}  ({p['description']})")
+        return p["device"]
 
     print("\nDetected serial ports:")
     for i, p in enumerate(ports, start=1):
@@ -233,7 +244,10 @@ def parse_args() -> argparse.Namespace:
       save output to a specific file
 
   console-capture -d /tmp/captures
-      save auto-named output to /tmp/captures/<hostname>_<timestamp>.txt""",
+      save auto-named output to /tmp/captures/<hostname>_<timestamp>.txt
+
+  console-capture -f commands.txt
+      run commands listed in a file instead of the defaults""",
     )
     parser.add_argument(
         "--port", "-p",
@@ -283,6 +297,17 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--command-file", "-f",
+        default=None,
+        metavar="FILE",
+        help=(
+            "Path to a text file with one CLI command per line. "
+            "Blank lines and lines starting with '#' are ignored. "
+            "Commands from this file are combined with any --command values; "
+            "together they replace the defaults."
+        ),
+    )
+    parser.add_argument(
         "--version", "-v",
         action="version",
         version="%(prog)s 1.0.0",
@@ -299,6 +324,20 @@ def main() -> None:
     output_path = Path(args.output) if args.output else None
     output_dir = Path(args.output_dir) if (args.output_dir and not args.output) else None
 
+    file_commands: list[str] = []
+    if args.command_file:
+        cmd_file = Path(args.command_file)
+        if not cmd_file.is_file():
+            sys.exit(f"ERROR: Command file {str(cmd_file)!r} does not exist.")
+        file_commands = [
+            line.strip()
+            for line in cmd_file.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        if not file_commands:
+            sys.exit(f"ERROR: Command file {str(cmd_file)!r} contains no commands.")
+    commands = file_commands + (args.commands or []) or COMMANDS
+
     try:
         if output_dir is not None and not output_dir.is_dir():
             sys.exit(f"ERROR: Output directory {str(output_dir)!r} does not exist.")
@@ -313,6 +352,10 @@ def main() -> None:
             print("Scanning for serial TTY devices via udev \u2026")
             ports = discover_serial_ports()
             port = select_port(ports)
+
+        print(f"\nCommands to be sent ({len(commands)}):")
+        for cmd in commands:
+            print(f"  {cmd}")
 
         # Connect
         print(f"\nConnecting to {port} at {args.baud} baud \u2026")
@@ -340,7 +383,7 @@ def main() -> None:
             filename = f"{prefix}_{ts}.txt"
             output_path = (output_dir / filename) if output_dir else Path(filename)
 
-        for cmd in (args.commands or COMMANDS):
+        for cmd in commands:
             print(f"  \u2192 {cmd}")
             output = send_command(ser, cmd)
             results[cmd] = output

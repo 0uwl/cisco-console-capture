@@ -64,7 +64,7 @@ The canonical version lives in [cisco_console_capture/__init__.py](cisco_console
 
 All logic lives in [cisco_console_capture/main.py](cisco_console_capture/main.py). The execution flow is:
 
-1. **Port resolution** — `discover_serial_ports()` uses pyudev to enumerate `ttyUSB*`, `ttyACM*`, `ttyS[0-9]*`, `ttyAMA*`, `ttyXR*` nodes; `select_port()` prompts the user to pick one if `--port` is not supplied.
+1. **Port resolution** — `discover_serial_ports()` uses pyudev to enumerate `ttyUSB*` and `ttyACM*` nodes only, tagging each with `is_cisco` when `ID_VENDOR` contains "cisco". `select_port()` auto-selects the device if exactly one Cisco-tagged port is found; otherwise it prompts the user to pick from the list. Both are skipped when `--port` is supplied.
 2. **Login** — `login()` sends `\r\n`, reads the banner, responds to username/password prompts, and sends `terminal length 0` to disable pagination.
 3. **Hostname detection** — `get_hostname()` sends a bare `\r\n` and parses the resulting prompt (`hostname#`) to derive the output filename prefix; falls back to `cisco_output` if the prompt can't be parsed.
 4. **Command execution** — `send_command()` writes a command and calls `read_until_prompt()`, which buffers output, automatically pages through `--More--` prompts by writing a space, and stops at a Cisco `#`/`>` prompt or a 15-second timeout.
