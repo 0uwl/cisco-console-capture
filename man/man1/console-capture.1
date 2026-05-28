@@ -7,8 +7,11 @@ console-capture \- capture Cisco CLI output over a serial console
 [\fB\-b\fR \fIBAUD\fR]
 [\fB\-u\fR \fIUSERNAME\fR]
 [\fB\-P\fR \fIPASSWORD\fR]
+[\fB\-e\fR \fIPASS\fR]
 [\fB\-o\fR \fIOUTPUT\fR]
+[\fB\-d\fR \fIDIR\fR]
 [\fB\-c\fR \fICMD\fR]...
+[\fB\-f\fR \fIFILE\fR]
 .SH DESCRIPTION
 .B console-capture
 connects to a Cisco network device via a serial console cable, sends CLI
@@ -26,7 +29,10 @@ to replace them with your own commands.
 Serial ports are auto-detected using
 .BR udev (7)
 if \fB\-\-port\fR is not specified.  The tool handles username/password login
-prompts and automatically disables terminal pagination (\fIterminal length 0\fR).
+prompts, issues
+.B enable
+to enter privileged EXEC mode (prompting for the enable password if required),
+and automatically disables terminal pagination (\fIterminal length 0\fR).
 .SH OPTIONS
 .TP
 .BR \-p ", " \-\-port " " \fIPATH\fR
@@ -45,14 +51,30 @@ and this option is not supplied.
 Login password.  Prompted securely via \fBgetpass\fR if required and not
 supplied on the command line.
 .TP
+.BR \-e ", " \-\-enable-password " " \fIPASS\fR
+Enable mode password.  Prompted securely if the device requests enable
+authentication and this option is not supplied.
+.TP
 .BR \-o ", " \-\-output " " \fIFILE\fR
 Path for the output text file.
 Default: \fI<hostname>_YYYYMMDD_HHMMSS.txt\fR in the current directory,
 where \fI<hostname>\fR is read from the device prompt after login.
 .TP
+.BR \-d ", " \-\-output-dir " " \fIDIR\fR
+Directory for the auto-named output file.
+Ignored when \fB\-\-output\fR is given; default is the current directory.
+.TP
 .BR \-c ", " \-\-command " " \fICMD\fR
 CLI command to send to the device.  May be repeated to run multiple commands.
-Replaces the default command list when supplied.
+Combined with \fB\-\-command\-file\fR; together they replace the default command list.
+.TP
+.BR \-f ", " \-\-command-file " " \fIFILE\fR
+Path to a text file with one CLI command per line.
+Blank lines and lines starting with
+.B #
+are ignored.
+Commands from this file are combined with any \fB\-\-command\fR values;
+together they replace the defaults.
 .TP
 .BR \-v ", " \-\-version
 Print version information and exit.
@@ -90,6 +112,22 @@ Save to a specific file:
 .RS 4
 .EX
 console-capture -p /dev/ttyUSB0 -o capture.txt
+.EE
+.RE
+.PP
+Save auto-named output to a specific directory:
+.PP
+.RS 4
+.EX
+console-capture -d /tmp/captures
+.EE
+.RE
+.PP
+Run commands from a file instead of the defaults:
+.PP
+.RS 4
+.EX
+console-capture -f commands.txt
 .EE
 .RE
 .SH FILES

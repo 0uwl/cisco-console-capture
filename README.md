@@ -17,13 +17,13 @@ timestamped text file.
 Download the release tarball, extract it, and run the bundled installer:
 
 ```bash
-tar -xzf console-capture-1.0.0.tar.gz
-cd console-capture-1.0.0
+tar -xzf cisco-console-capture-1.0.0.tar.gz
+cd cisco-console-capture-1.0.0
 ./install.sh
 ```
 
 The installer creates a Python virtual environment under
-`~/.local/share/console-capture` and places a wrapper script at
+`~/.local/share/cisco-console-capture` and places a wrapper script at
 `/usr/local/bin/console-capture`. All dependencies are bundled in the
 tarball — no internet access is required on the target machine.
 
@@ -76,13 +76,13 @@ console-capture -d /tmp/captures
 ## Uninstallation
 
 ```bash
-~/.local/share/console-capture/uninstall.sh
+~/.local/share/cisco-console-capture/uninstall.sh
 ```
 
 ## How it works
 
-1. **udev discovery** – scans the `tty` subsystem via pyudev for real serial
-   adapters (`ttyUSB*`, `ttyACM*`, `ttyS[0-9]*`, `ttyAMA*`, `ttyXR*`).
+1. **udev discovery** – scans the `tty` subsystem via pyudev for USB-serial
+   adapters (`ttyUSB*`, `ttyACM*`).
 2. **Login handling** – sends Enter, responds to username/password prompts, issues `enable` to enter privileged EXEC mode (handling the enable password prompt if the device asks), then sends `terminal length 0` to disable pagination.
 3. **Command execution** – sends each command, reads until a Cisco prompt
    (`#` or `>`) or timeout, and handles any remaining `--More--` pages.
