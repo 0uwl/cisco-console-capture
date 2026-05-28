@@ -27,7 +27,7 @@ PYTHON=python3
 # Version + paths
 # ---------------------------------------------------------------------------
 
-VERSION=$("$PYTHON" -c "from cisco_console_capture import __version__; print(__version__)")
+VERSION=$("$PYTHON" -c "import re; print(re.search(r'(?m)^\s*version\s*=\s*\"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
 ARCHIVE_NAME="cisco-console-capture-${VERSION}"
 BUILD_DIR="${SCRIPT_DIR}/build"
 STAGE_DIR="${BUILD_DIR}/${ARCHIVE_NAME}"
