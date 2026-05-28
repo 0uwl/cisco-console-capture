@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cisco-console-capture"
-version = "1.1.0"
+version = "1.1.1"
 description = "Capture Cisco CLI output over a serial console using pyserial and udev"
 readme = "README.md"
 license = { text = "MIT" }
