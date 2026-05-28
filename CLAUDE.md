@@ -58,7 +58,11 @@ The wrapper path can be overridden by setting `CONSOLE_CAPTURE_BIN_LINK` before 
 
 ## Version
 
-The canonical version lives in [cisco_console_capture/__init__.py](cisco_console_capture/__init__.py) as `__version__`. `pyproject.toml` and `build.sh` both read it from there — bump it in `__init__.py` only.
+The canonical version lives in `pyproject.toml` as `version = "…"` under `[project]`. To cut a new release, bump it there only.
+
+- [cisco_console_capture/__init__.py](cisco_console_capture/__init__.py) exposes `__version__` at runtime via `importlib.metadata.version("cisco-console-capture")`, so it reflects whatever is installed.
+- `build.sh` reads the version from `pyproject.toml` with a regex (no import needed at build time).
+- The `--version` flag in `main.py` imports `__version__` from the package.
 
 ## Architecture
 

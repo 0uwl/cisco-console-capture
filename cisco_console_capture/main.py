@@ -15,6 +15,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from cisco_console_capture import __version__
+
 # -- Guard: Linux only --------------------------------------------------------
 if sys.platform != "linux":
     sys.exit("ERROR: This script only runs on Linux.")
@@ -310,7 +312,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--version", "-v",
         action="version",
-        version="%(prog)s 1.0.0",
+        version=f"%(prog)s {__version__}",
     )
     return parser.parse_args()
 
@@ -357,36 +359,54 @@ def main() -> None:
         for cmd in commands:
             print(f"  {cmd}")
 
-        # Connect
-        print(f"\nConnecting to {port} at {args.baud} baud \u2026")
-        try:
-            ser = serial.Serial(
-                port=port,
-                baudrate=args.baud,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                timeout=1,
-                xonxoff=False,
-                rtscts=False,
-                dsrdtr=False,
-            )
-        except serial.SerialException as exc:
-            sys.exit(f"ERROR: Could not open {port}: {exc}")
+        # Connect + execute (retry loop on serial errors)
+        while True:
+            print(f"\nConnecting to {port} at {args.baud} baud \u2026")
+            try:
+                ser = serial.Serial(
+                    port=port,
+                    baudrate=args.baud,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=1,
+                    xonxoff=False,
+                    rtscts=False,
+                    dsrdtr=False,
+                )
+            except serial.SerialException as exc:
+                print(f"\nERROR: Could not open {port}: {exc}")
+                input(
+                    "Close any applications using this port (e.g. minicom) "
+                    "and press Enter to retry, or Ctrl+C to quit: "
+                )
+                continue
 
-        print("Connected. Attempting login \u2026")
-        login(ser, args.username, args.password, args.enable_password)
+            try:
+                print("Connected. Attempting login \u2026")
+                login(ser, args.username, args.password, args.enable_password)
 
-        if output_path is None:
-            hostname = get_hostname(ser)
-            prefix = hostname if hostname else "cisco_output"
-            filename = f"{prefix}_{ts}.txt"
-            output_path = (output_dir / filename) if output_dir else Path(filename)
+                if output_path is None:
+                    hostname = get_hostname(ser)
+                    prefix = hostname if hostname else "cisco_output"
+                    filename = f"{prefix}_{ts}.txt"
+                    output_path = (output_dir / filename) if output_dir else Path(filename)
 
-        for cmd in commands:
-            print(f"  \u2192 {cmd}")
-            output = send_command(ser, cmd)
-            results[cmd] = output
+                results = {}
+                for cmd in commands:
+                    print(f"  \u2192 {cmd}")
+                    results[cmd] = send_command(ser, cmd)
+
+                break  # all commands completed successfully
+
+            except serial.SerialException as exc:
+                ser.close()
+                ser = None
+                print(f"\nSerial error: {exc}")
+                input(
+                    "Close any applications using this port (e.g. minicom) "
+                    "and press Enter to retry, or Ctrl+C to quit: "
+                )
 
     except KeyboardInterrupt:
         print("\nInterrupted.")
