@@ -2,8 +2,16 @@
 # uninstall.sh - Remove Cisco Console Capture
 set -euo pipefail
 
-INSTALL_DIR="${HOME}/.local/share/cisco-console-capture"
-MAN_DEST="${HOME}/.local/share/man/man1/console-capture.1.gz"
+# Install dir: explicit override, else the dir this script lives in when it is
+# an installed copy (has .bin_link), else the default.
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${CONSOLE_CAPTURE_INSTALL_DIR:-}" ]]; then
+    INSTALL_DIR="${CONSOLE_CAPTURE_INSTALL_DIR}"
+elif [[ -f "${SELF_DIR}/.bin_link" ]]; then
+    INSTALL_DIR="${SELF_DIR}"
+else
+    INSTALL_DIR="${HOME}/.local/share/cisco-console-capture"
+fi
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
@@ -36,9 +44,16 @@ else
     sudo_run rm -f "${BIN_LINK}"
 fi
 
+# Resolve man page path from install record, fall back to default
+if [[ -f "${INSTALL_DIR}/.man_dest" ]]; then
+    MAN_DEST=$(cat "${INSTALL_DIR}/.man_dest")
+else
+    MAN_DEST="${HOME}/.local/share/man/man1/console-capture.1.gz"
+fi
+
 info "Removing ${MAN_DEST} ..."
 rm -f "${MAN_DEST}"
-mandb -q "${HOME}/.local/share/man" 2>/dev/null || true
+mandb -q "$(dirname "$(dirname "${MAN_DEST}")")" 2>/dev/null || true
 
 info "Removing ${INSTALL_DIR} ..."
 rm -rf "${INSTALL_DIR}"
