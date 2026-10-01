@@ -78,9 +78,9 @@ cat > "${STAGE_DIR}/install.sh" << 'INSTALL_EOF'
 # install.sh - Install Cisco Console Capture from bundled wheels (offline).
 set -euo pipefail
 
-INSTALL_DIR="${HOME}/.local/share/cisco-console-capture"
+INSTALL_DIR="${CONSOLE_CAPTURE_INSTALL_DIR:-${HOME}/.local/share/cisco-console-capture}"
 BIN_LINK="${CONSOLE_CAPTURE_BIN_LINK:-/usr/local/bin/console-capture}"
-MAN_DIR="${HOME}/.local/share/man/man1"
+MAN_DIR="${CONSOLE_CAPTURE_MAN_DIR:-${HOME}/.local/share/man/man1}"
 MAN_DEST="${MAN_DIR}/console-capture.1.gz"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHEELS_DIR="${SCRIPT_DIR}/wheels"
@@ -123,6 +123,9 @@ prompt_install() {
     warn "${desc} not found."
     if ! command -v apt-get &>/dev/null; then
         error "${desc} is required. Install it manually and re-run."
+    fi
+    if [[ ! -t 0 ]]; then
+        error "${desc} is required but this is a non-interactive run. Install ${pkg} and re-run."
     fi
     read -r -p "  Install ${pkg} via apt now? [y/N] " response
     if [[ "${response}" =~ ^[Yy]$ ]]; then
@@ -207,7 +210,9 @@ if [[ -f "${SCRIPT_DIR}/man/man1/console-capture.1" ]]; then
     info "Installing man page ..."
     mkdir -p "${MAN_DIR}"
     gzip -c "${SCRIPT_DIR}/man/man1/console-capture.1" > "${MAN_DEST}"
-    mandb -q "${HOME}/.local/share/man" 2>/dev/null || true
+    mandb -q "$(dirname "${MAN_DIR}")" 2>/dev/null || true
+    # Record where the man page went so uninstall.sh removes the right file
+    echo "${MAN_DEST}" > "${INSTALL_DIR}/.man_dest"
 fi
 
 # -- Done ----------------------------------------------------------------------

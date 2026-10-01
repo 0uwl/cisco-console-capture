@@ -54,7 +54,17 @@ cd cisco-console-capture-<version>
 ~/.local/share/cisco-console-capture/uninstall.sh
 ```
 
-The wrapper path can be overridden by setting `CONSOLE_CAPTURE_BIN_LINK` before running `install.sh` (the integration test uses this to avoid writing to `/usr/local/bin/`).
+All three install paths can be overridden with environment variables before running `install.sh`:
+
+| Variable | Default |
+|---|---|
+| `CONSOLE_CAPTURE_INSTALL_DIR` | `~/.local/share/cisco-console-capture` (the venv) |
+| `CONSOLE_CAPTURE_BIN_LINK` | `/usr/local/bin/console-capture` (the wrapper) |
+| `CONSOLE_CAPTURE_MAN_DIR` | `~/.local/share/man/man1` |
+
+**Do not remove these.** The console-laptop live image (`console-laptop-v3`) installs this app inside a live-build chroot, where `$HOME` is unusable, by setting all three (`/opt/cisco-console-capture`, `/usr/local/bin/console-capture`, `/usr/local/share/man/man1`). The installer must also stay non-interactive-safe: with no tty it fails on a missing dependency instead of prompting. The venv must be created at the path it runs from, since `venv` bakes absolute paths into shebangs.
+
+The installer records the wrapper and man page locations in `.bin_link` and `.man_dest` inside the install dir; the installed `uninstall.sh` locates its install dir from its own location, so it needs no variables. The integration test runs a second pass with all three overridden.
 
 ## Version
 
@@ -89,4 +99,4 @@ The commands sent to the device are defined in the `COMMANDS` list constant near
 
 ## Man page
 
-The man page source is at [man/man1/console-capture.1](man/man1/console-capture.1). `build.sh` bundles it into the tarball; `install.sh` gzip-compresses it to `~/.local/share/man/man1/console-capture.1.gz`.
+The man page source is at [man/man1/console-capture.1](man/man1/console-capture.1). `build.sh` bundles it into the tarball; `install.sh` gzip-compresses it to `~/.local/share/man/man1/console-capture.1.gz`, or to `$CONSOLE_CAPTURE_MAN_DIR` when set.

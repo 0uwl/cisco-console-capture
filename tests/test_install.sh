@@ -10,6 +10,14 @@ BIN_LINK="${CONSOLE_CAPTURE_BIN_LINK}"
 MAN_DEST="${HOME}/.local/share/man/man1/console-capture.1.gz"
 EXTRACT_DIR=""
 
+# Second pass: every path overridden, as the console-laptop image build does
+OVR_ROOT=$(mktemp -d)
+OVR_INSTALL_DIR="${OVR_ROOT}/opt/cisco-console-capture"
+OVR_BIN_LINK="${OVR_ROOT}/bin/console-capture"
+OVR_MAN_DIR="${OVR_ROOT}/man/man1"
+OVR_MAN_DEST="${OVR_MAN_DIR}/console-capture.1.gz"
+mkdir -p "$(dirname "${OVR_BIN_LINK}")"   # installer does not create the wrapper's parent
+
 PASS=0
 FAIL=0
 
@@ -45,7 +53,10 @@ cleanup() {
         rm -rf "${EXTRACT_DIR}"
     fi
 
-    rm -rf "${TEST_BIN_DIR}"
+    if [[ -x "${OVR_INSTALL_DIR}/uninstall.sh" ]]; then
+        "${OVR_INSTALL_DIR}/uninstall.sh" || true
+    fi
+    rm -rf "${TEST_BIN_DIR}" "${OVR_ROOT}"
 }
 
 trap cleanup EXIT
@@ -132,6 +143,52 @@ if [[ "${INSTALL_OK}" == true ]]; then
         pass "--version returns a version string (${VERSION_OUTPUT})"
     else
         fail "--version did not return a version string (got: ${VERSION_OUTPUT})"
+    fi
+fi
+
+# -- Overridden-paths pass ----------------------------------------------------
+
+if [[ "${INSTALL_OK}" == true ]]; then
+    echo ""
+    echo -e "${YELLOW}--- Uninstall (default paths) ---${NC}"
+    "${INSTALL_DIR}/uninstall.sh"
+    assert_not_exists "${INSTALL_DIR}"
+    assert_not_exists "${BIN_LINK}"
+    assert_not_exists "${MAN_DEST}"
+
+    echo ""
+    echo -e "${YELLOW}--- Install (overridden paths, no stdin) ---${NC}"
+    if env CONSOLE_CAPTURE_INSTALL_DIR="${OVR_INSTALL_DIR}" \
+           CONSOLE_CAPTURE_BIN_LINK="${OVR_BIN_LINK}" \
+           CONSOLE_CAPTURE_MAN_DIR="${OVR_MAN_DIR}" \
+           bash "${EXTRACTED_ROOT}/install.sh" < /dev/null; then
+        assert_exists     "${OVR_INSTALL_DIR}/bin/console-capture"
+        assert_executable "${OVR_BIN_LINK}"
+        assert_exists     "${OVR_MAN_DEST}"
+        assert_not_exists "${INSTALL_DIR}"
+
+        SHEBANG=$(head -1 "${OVR_INSTALL_DIR}/bin/console-capture")
+        if [[ "${SHEBANG}" == "#!${OVR_INSTALL_DIR}/"* ]]; then
+            pass "venv shebang points inside ${OVR_INSTALL_DIR}"
+        else
+            fail "venv shebang points elsewhere (${SHEBANG})"
+        fi
+
+        VERSION_OUTPUT=$("${OVR_INSTALL_DIR}/bin/console-capture" --version 2>&1) || true
+        if echo "${VERSION_OUTPUT}" | grep -qE "[0-9]+\.[0-9]+\.[0-9]+"; then
+            pass "--version at overridden prefix (${VERSION_OUTPUT})"
+        else
+            fail "--version at overridden prefix failed (got: ${VERSION_OUTPUT})"
+        fi
+
+        echo ""
+        echo -e "${YELLOW}--- Uninstall (overridden paths) ---${NC}"
+        env -u CONSOLE_CAPTURE_BIN_LINK "${OVR_INSTALL_DIR}/uninstall.sh"
+        assert_not_exists "${OVR_INSTALL_DIR}"
+        assert_not_exists "${OVR_BIN_LINK}"
+        assert_not_exists "${OVR_MAN_DEST}"
+    else
+        fail "install.sh with overridden paths exited non-zero"
     fi
 fi
 

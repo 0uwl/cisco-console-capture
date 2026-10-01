@@ -17,8 +17,8 @@ timestamped text file.
 Download the release tarball, extract it, and run the bundled installer:
 
 ```bash
-tar -xzf cisco-console-capture-1.0.0.tar.gz
-cd cisco-console-capture-1.0.0
+tar -xzf cisco-console-capture-1.1.2.tar.gz
+cd cisco-console-capture-1.1.2
 ./install.sh
 ```
 
@@ -26,6 +26,19 @@ The installer creates a Python virtual environment under
 `~/.local/share/cisco-console-capture` and places a wrapper script at
 `/usr/local/bin/console-capture`. All dependencies are bundled in the
 tarball — no internet access is required on the target machine.
+
+Each path can be overridden with an environment variable:
+
+```bash
+env CONSOLE_CAPTURE_INSTALL_DIR=/opt/cisco-console-capture \
+    CONSOLE_CAPTURE_BIN_LINK=/usr/local/bin/console-capture \
+    CONSOLE_CAPTURE_MAN_DIR=/usr/local/share/man/man1 \
+    ./install.sh
+```
+
+The console-laptop live image uses exactly this to install system-wide at
+build time, so keep these variables working. Without a terminal the installer
+never prompts: a missing dependency makes it exit with an error.
 
 ### Add yourself to the dialout group (once)
 
@@ -78,6 +91,10 @@ console-capture -d /tmp/captures
 ```bash
 ~/.local/share/cisco-console-capture/uninstall.sh
 ```
+
+If you installed with `CONSOLE_CAPTURE_INSTALL_DIR`, run `uninstall.sh` from
+that directory instead. It removes the wrapper and man page from wherever they
+were installed.
 
 ## How it works
 
