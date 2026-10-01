@@ -24,23 +24,9 @@ _DM = "\033[2m"    # dim
 _RE = "\033[31m"   # red
 _GR = "\033[32m"   # green
 _YL = "\033[33m"   # yellow
-_CY = "\033[36m"   # cyan
-_MG = "\033[35m"   # magenta
 
-# -- Guard: Linux only --------------------------------------------------------
-if sys.platform != "linux":
-    sys.exit(f"{_RE}ERROR: This script only runs on Linux.{_R}")
-
-try:
-    import serial
-except ImportError:
-    sys.exit(f"{_RE}ERROR: pyserial is not installed.  Run: pip install pyserial{_R}")
-
-try:
-    import pyudev
-except ImportError:
-    sys.exit(f"{_RE}ERROR: pyudev is not installed.  Run: pip install pyudev{_R}")
-
+import serial
+import pyudev
 
 # -- Constants ----------------------------------------------------------------
 COMMANDS = [
@@ -106,12 +92,12 @@ def select_port(ports: list[dict]) -> str:
     cisco_ports = [p for p in ports if p["is_cisco"]]
     if len(cisco_ports) == 1:
         p = cisco_ports[0]
-        print(f"{_GR}{_B}Auto-selected Cisco device:{_R} {p['device']}  {_DM}({p['description']}){_R}")
+        print(f"Auto-selected Cisco device: {p['device']}  {_DM}({p['description']}){_R}")
         return p["device"]
 
-    print(f"\n{_CY}{_B}Detected serial ports:{_R}")
+    print(f"\nDetected serial ports:")
     for i, p in enumerate(ports, start=1):
-        print(f"  {_B}[{i}]{_R} {p['device']}  {_DM}({p['description']}){_R}")
+        print(f"  [{i}] {p['device']}  {_DM}({p['description']}){_R}")
 
     while True:
         raw = input(f"\n{_YL}Select port [1-{len(ports)}]: {_R}").strip()
@@ -359,19 +345,19 @@ def main() -> None:
             port = args.port
             if not Path(port).exists():
                 sys.exit(f"{_RE}ERROR: Device {port!r} does not exist.{_R}")
-            print(f"{_CY}Using specified port:{_R} {port}")
+            print(f"Using specified port: {port}")
         else:
-            print(f"{_CY}Scanning for serial TTY devices via udev \u2026{_R}")
+            print(f"Scanning for serial TTY devices via udev ...")
             ports = discover_serial_ports()
             port = select_port(ports)
 
-        print(f"\n{_B}Commands to be sent ({len(commands)}):{_R}")
+        print(f"\nCommands to be sent ({len(commands)}):")
         for cmd in commands:
             print(f"  {_DM}{cmd}{_R}")
 
         # Connect + execute (retry loop on serial errors)
         while True:
-            print(f"\n{_CY}Connecting to {port} at {args.baud} baud \u2026{_R}")
+            print(f"\nConnecting to {port} at {args.baud} baud ...")
             try:
                 ser = serial.Serial(
                     port=port,
@@ -393,9 +379,9 @@ def main() -> None:
                 continue
 
             try:
-                print(f"{_CY}Connected. Attempting login \u2026{_R}")
+                print(f"{_GR}{_B}Connected. Attempting login ...{_R}")
                 login(ser, args.username, args.password, args.enable_password)
-                print(f"{_GR}{_B}Login successful.{_R}")
+                print(f"{_GR}{_B}Login successful!{_R}")
 
                 if output_path is None:
                     hostname = get_hostname(ser)
@@ -403,10 +389,10 @@ def main() -> None:
                     filename = f"{prefix}_{ts}.txt"
                     output_path = (output_dir / filename) if output_dir else Path(filename)
 
-                print(f"\n{_CY}Sending commands \u2026{_R}")
+                print(f"\nSending commands ...")
                 results = {}
                 for cmd in commands:
-                    print(f"  {_MG}\u2192{_R} {cmd}")
+                    print(f"  -> {cmd}")
                     results[cmd] = send_command(ser, cmd)
 
                 break  # all commands completed successfully
@@ -425,7 +411,7 @@ def main() -> None:
     finally:
         if ser is not None:
             ser.close()
-            print(f"{_DM}Serial port closed.{_R}")
+            print(f"Serial port closed.")
 
     if results:
         fallback = (output_dir or Path()) / f"cisco_output_{ts}.txt"
