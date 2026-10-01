@@ -17,19 +17,29 @@ from pathlib import Path
 
 from cisco_console_capture import __version__
 
+# -- ANSI colors --------------------------------------------------------------
+_R  = "\033[0m"    # reset
+_B  = "\033[1m"    # bold
+_DM = "\033[2m"    # dim
+_RE = "\033[31m"   # red
+_GR = "\033[32m"   # green
+_YL = "\033[33m"   # yellow
+_CY = "\033[36m"   # cyan
+_MG = "\033[35m"   # magenta
+
 # -- Guard: Linux only --------------------------------------------------------
 if sys.platform != "linux":
-    sys.exit("ERROR: This script only runs on Linux.")
+    sys.exit(f"{_RE}ERROR: This script only runs on Linux.{_R}")
 
 try:
     import serial
 except ImportError:
-    sys.exit("ERROR: pyserial is not installed.  Run: pip install pyserial")
+    sys.exit(f"{_RE}ERROR: pyserial is not installed.  Run: pip install pyserial{_R}")
 
 try:
     import pyudev
 except ImportError:
-    sys.exit("ERROR: pyudev is not installed.  Run: pip install pyudev")
+    sys.exit(f"{_RE}ERROR: pyudev is not installed.  Run: pip install pyudev{_R}")
 
 
 # -- Constants ----------------------------------------------------------------
@@ -88,26 +98,26 @@ def select_port(ports: list[dict]) -> str:
     """Auto-select a Cisco device if unambiguous, otherwise prompt the user."""
     if not ports:
         sys.exit(
-            "No serial TTY devices found via udev.\n"
-            "Check that your USB-serial adapter is connected and "
-            "your user is in the 'dialout' group."
+            f"{_RE}No serial TTY devices found via udev.\n"
+            f"Check that your USB-serial adapter is connected and "
+            f"your user is in the 'dialout' group.{_R}"
         )
 
     cisco_ports = [p for p in ports if p["is_cisco"]]
     if len(cisco_ports) == 1:
         p = cisco_ports[0]
-        print(f"Auto-selected Cisco device: {p['device']}  ({p['description']})")
+        print(f"{_GR}{_B}Auto-selected Cisco device:{_R} {p['device']}  {_DM}({p['description']}){_R}")
         return p["device"]
 
-    print("\nDetected serial ports:")
+    print(f"\n{_CY}{_B}Detected serial ports:{_R}")
     for i, p in enumerate(ports, start=1):
-        print(f"  [{i}] {p['device']}  ({p['description']})")
+        print(f"  {_B}[{i}]{_R} {p['device']}  {_DM}({p['description']}){_R}")
 
     while True:
-        raw = input(f"\nSelect port [1-{len(ports)}]: ").strip()
+        raw = input(f"\n{_YL}Select port [1-{len(ports)}]: {_R}").strip()
         if raw.isdigit() and 1 <= int(raw) <= len(ports):
             return ports[int(raw) - 1]["device"]
-        print("Invalid choice, try again.")
+        print(f"{_RE}Invalid choice, try again.{_R}")
 
 
 # -- Serial I/O helpers -------------------------------------------------------
@@ -218,7 +228,7 @@ def write_output(results: dict[str, str], output_path: Path) -> None:
         ]
 
     output_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"\nOutput written to: {output_path.resolve()}")
+    print(f"\n{_GR}{_B}Output written to:{_R} {output_path.resolve()}")
 
 
 # -- CLI -----------------------------------------------------------------------
@@ -330,38 +340,38 @@ def main() -> None:
     if args.command_file:
         cmd_file = Path(args.command_file)
         if not cmd_file.is_file():
-            sys.exit(f"ERROR: Command file {str(cmd_file)!r} does not exist.")
+            sys.exit(f"{_RE}ERROR: Command file {str(cmd_file)!r} does not exist.{_R}")
         file_commands = [
             line.strip()
             for line in cmd_file.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.strip().startswith("#")
         ]
         if not file_commands:
-            sys.exit(f"ERROR: Command file {str(cmd_file)!r} contains no commands.")
+            sys.exit(f"{_RE}ERROR: Command file {str(cmd_file)!r} contains no commands.{_R}")
     commands = file_commands + (args.commands or []) or COMMANDS
 
     try:
         if output_dir is not None and not output_dir.is_dir():
-            sys.exit(f"ERROR: Output directory {str(output_dir)!r} does not exist.")
+            sys.exit(f"{_RE}ERROR: Output directory {str(output_dir)!r} does not exist.{_R}")
 
         # Resolve port
         if args.port:
             port = args.port
             if not Path(port).exists():
-                sys.exit(f"ERROR: Device {port!r} does not exist.")
-            print(f"Using specified port: {port}")
+                sys.exit(f"{_RE}ERROR: Device {port!r} does not exist.{_R}")
+            print(f"{_CY}Using specified port:{_R} {port}")
         else:
-            print("Scanning for serial TTY devices via udev \u2026")
+            print(f"{_CY}Scanning for serial TTY devices via udev \u2026{_R}")
             ports = discover_serial_ports()
             port = select_port(ports)
 
-        print(f"\nCommands to be sent ({len(commands)}):")
+        print(f"\n{_B}Commands to be sent ({len(commands)}):{_R}")
         for cmd in commands:
-            print(f"  {cmd}")
+            print(f"  {_DM}{cmd}{_R}")
 
         # Connect + execute (retry loop on serial errors)
         while True:
-            print(f"\nConnecting to {port} at {args.baud} baud \u2026")
+            print(f"\n{_CY}Connecting to {port} at {args.baud} baud \u2026{_R}")
             try:
                 ser = serial.Serial(
                     port=port,
@@ -375,16 +385,17 @@ def main() -> None:
                     dsrdtr=False,
                 )
             except serial.SerialException as exc:
-                print(f"\nERROR: Could not open {port}: {exc}")
+                print(f"\n{_RE}ERROR: Could not open {port}: {exc}{_R}")
                 input(
-                    "Close any applications using this port (e.g. minicom) "
-                    "and press Enter to retry, or Ctrl+C to quit: "
+                    f"{_YL}Close any applications using this port (e.g. minicom) "
+                    f"and press Enter to retry, or Ctrl+C to quit: {_R}"
                 )
                 continue
 
             try:
-                print("Connected. Attempting login \u2026")
+                print(f"{_CY}Connected. Attempting login \u2026{_R}")
                 login(ser, args.username, args.password, args.enable_password)
+                print(f"{_GR}{_B}Login successful.{_R}")
 
                 if output_path is None:
                     hostname = get_hostname(ser)
@@ -392,9 +403,10 @@ def main() -> None:
                     filename = f"{prefix}_{ts}.txt"
                     output_path = (output_dir / filename) if output_dir else Path(filename)
 
+                print(f"\n{_CY}Sending commands \u2026{_R}")
                 results = {}
                 for cmd in commands:
-                    print(f"  \u2192 {cmd}")
+                    print(f"  {_MG}\u2192{_R} {cmd}")
                     results[cmd] = send_command(ser, cmd)
 
                 break  # all commands completed successfully
@@ -402,24 +414,24 @@ def main() -> None:
             except serial.SerialException as exc:
                 ser.close()
                 ser = None
-                print(f"\nSerial error: {exc}")
+                print(f"\n{_RE}Serial error: {exc}{_R}")
                 input(
-                    "Close any applications using this port (e.g. minicom) "
-                    "and press Enter to retry, or Ctrl+C to quit: "
+                    f"{_YL}Close any applications using this port (e.g. minicom) "
+                    f"and press Enter to retry, or Ctrl+C to quit: {_R}"
                 )
 
     except KeyboardInterrupt:
-        print("\nInterrupted.")
+        print(f"\n{_YL}Interrupted.{_R}")
     finally:
         if ser is not None:
             ser.close()
-            print("Serial port closed.")
+            print(f"{_DM}Serial port closed.{_R}")
 
     if results:
         fallback = (output_dir or Path()) / f"cisco_output_{ts}.txt"
         write_output(results, output_path or fallback)
     else:
-        print("No output captured.")
+        print(f"{_YL}No output captured.{_R}")
 
 
 if __name__ == "__main__":
